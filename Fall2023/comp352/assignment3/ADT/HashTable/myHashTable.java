@@ -154,7 +154,7 @@ public class myHashTable {
         return index;
     }
 
-    public void remove(int studentID) {
+    public boolean remove(int studentID) {
         // Removing the student from the bucketArray
         Student searchProbe = new Student(studentID, "StudentSearcher");
         int hashcode = searchProbe.hashCode();
@@ -166,7 +166,7 @@ public class myHashTable {
             index = compressionFunction(hashcode, exponent);
             if (index >= this.bucketArray.length) {
                 System.out.println("Error: ID not found");
-                return; // End of table reached, ID not found
+                return false; // End of table reached, ID not found
             }
         }
 
@@ -175,7 +175,7 @@ public class myHashTable {
             this.keySize--;
         } else {
             System.out.println("Error: ID not found");
-            return; // ID not found in the bucketArray
+            return false; // ID not found in the bucketArray
         }
 
         // Removing the key from insertionOrder
@@ -189,6 +189,7 @@ public class myHashTable {
                 break;
             }
         }
+        return true;
     }
 
 
@@ -249,7 +250,7 @@ public class myHashTable {
     }
 
     // Helper method to check if a key exists
-    private boolean keyExists(int key) {
+    public boolean keyExists(int key) {
         for (Student student : bucketArray) {
             if (student != null && !student.isDeleted() && student.getKey() == key) {
                 return true;
@@ -308,6 +309,19 @@ public class myHashTable {
             }
         }
         return count;
+    }
+
+    //for testing only.
+    public String getBucketArrayString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < bucketArray.length; i++) {
+            if (bucketArray[i] != null) {
+                sb.append("[").append(i).append("]: ")
+                        .append(bucketArray[i].isDeleted() ? "Deleted" : bucketArray[i].getValue())
+                        .append("\n");
+            }
+        }
+        return sb.toString();
     }
 
 
