@@ -1,9 +1,13 @@
 package comp352.assignment3.ADT.HashTable;
 
+import comp352.assignment3.driver.TestSuite;
+
 import java.util.Random;
 
 public class myHashTable {
     private class Student {
+
+
         private int key;
         private String value;
 
@@ -49,11 +53,15 @@ public class myHashTable {
             if (value == 0) {
                 return hashcode;
             } else {
-                return generateHashCode(hashcode + (int) Math.pow(value % 10, i), value / 10, i+1);
+                return generateHashCode(hashcode + (int) Math.pow(value % 10, i), value / 10, i + 1);
             }
         }
 
     }
+
+    private int duplicateKeys = 0;
+
+    private int invalidKeys = 0;
 
     private Student[] bucketArray;
 
@@ -78,13 +86,56 @@ public class myHashTable {
             System.exit(0);
         } else {
             this.userSize = size;
-            this.logicalSize = findNextPrime(sieveOfEratosthenes(primeLimit), 2 * size);
+            this.logicalSize = findNextPrime(2 * size); // Directly find the next prime number
             this.theoreticalMaxLoadFactor = (double) this.userSize / this.logicalSize;
             this.bucketArray = new Student[logicalSize];
             System.out.println("Load factor is=" + theoreticalMaxLoadFactor);
             System.out.println("Logical Size = " + logicalSize);
             insertionOrder = new int[size];
         }
+    }
+
+    public boolean verifyKey(int key) {
+        //verify if the key is length 8:
+        if (key < 10000000 || key > 99999999) {
+            System.out.println("Invalid Key: Key must be 8 digits long.");
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    // Optimized findNextPrime method
+    public static int findNextPrime(int N) {
+        if (N <= 2) {
+            return 2;
+        }
+        if (N % 2 == 0) {
+            N++;
+        }
+        while (!isPrime(N)) {
+            N += 2;
+        }
+        return N;
+    }
+
+    // Efficient primality check method
+    private static boolean isPrime(int number) {
+        if (number <= 1) {
+            return false;
+        }
+        if (number <= 3) {
+            return true;
+        }
+        if (number % 2 == 0 || number % 3 == 0) {
+            return false;
+        }
+        for (int i = 5; i * i <= number; i += 6) {
+            if (number % i == 0 || number % (i + 2) == 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     //O(nlog(logn))
@@ -114,47 +165,170 @@ public class myHashTable {
         return -1; // If no prime number is found (which is unlikely for reasonable N)
     }
 
+
     private int compressionFunction(int hashcode, int i) {
-        return (hashcode + i + 3 * i * i) % this.logicalSize;
+        return (hashcode + i + 5 * i * i) % this.logicalSize;
     }
 
-    public double getActualLoadFactor(){
+    public double getActualLoadFactor() {
         return (double) this.keySize / this.userSize;
     }
 
-    public void put(int key, String val) {
+    //    public boolean put(int key, String val) {
+//        if (this.keySize >= this.userSize) {
+//            System.out.println("Error: Hash table is full");
+//            return false; // Exit if the hash table is full
+//        }
+//        if(!verifyKey(key)){
+//            invalidKeys++;
+//            return false;
+//        }
+//
+//        Student entry = new Student(key, val);
+//        int exponent = 0;
+//        int hashcode = entry.hashCode();
+//        int assumedIndex = compressionFunction(hashcode, exponent);
+//        int actualIndex = searchViaQuadraticProbing(key, assumedIndex, exponent, hashcode);
+//
+//        // Additional check to see if the key already exists and isn't marked as deleted
+//        if (this.bucketArray[actualIndex] != null && !this.bucketArray[actualIndex].isDeleted()) {
+//            System.out.println("Error: Duplicate key");
+//            duplicateKeys++;
+//            return false; // Exit if the key already exists
+//        }
+//
+//        this.bucketArray[actualIndex] = entry;
+//        insertionOrder[orderSize++] = key;
+//        this.keySize++;
+//        return true;
+//    }
+    public boolean put(int key, String val) {
         if (this.keySize >= this.userSize) {
             System.out.println("Error: Hash table is full");
-            return; // Exit if the hash table is full
+            return false; // Exit if the hash table is full
+        }
+        if (!verifyKey(key)) {
+            invalidKeys++;
+            return false;
         }
 
         Student entry = new Student(key, val);
         int exponent = 0;
         int hashcode = entry.hashCode();
         int assumedIndex = compressionFunction(hashcode, exponent);
-        int actualIndex = searchViaQuadraticProbing(key, assumedIndex, exponent, hashcode);
+        int actualIndex = searchViaQuadraticProbingForPut(key, assumedIndex, exponent, hashcode);
 
         // Additional check to see if the key already exists and isn't marked as deleted
         if (this.bucketArray[actualIndex] != null && !this.bucketArray[actualIndex].isDeleted()) {
             System.out.println("Error: Duplicate key");
-            return; // Exit if the key already exists
+            duplicateKeys++;
+            return false; // Exit if the key already exists
         }
 
         this.bucketArray[actualIndex] = entry;
         insertionOrder[orderSize++] = key;
         this.keySize++;
+        return true;
     }
 
+    private int searchViaQuadraticProbingForPut(int key, int index, int exponent, int hashcode) {
+        while (this.bucketArray[index] != null && !(this.bucketArray[index].getKey() == key)) {
+            exponent++;
+            index = compressionFunction(hashcode, exponent);
+            collisionCounter++;
+        }
+        return index;
+    }
+
+
+    private int collisionCounter = 0;
+
+    public int getCollisionCounter() {
+        return collisionCounter;
+    }
 
     private int searchViaQuadraticProbing(int key, int index, int exponent, int hashcode) {
         while (this.bucketArray[index] != null && !(this.bucketArray[index].getKey() == key) && !this.bucketArray[index].isDeleted()) {
             exponent++;
             index = compressionFunction(hashcode, exponent);
+            collisionCounter++;
         }
         return index;
     }
 
+//    private int searchViaQuadraticProbing(int key, int index, int exponent, int hashcode) {
+//        while (this.bucketArray[index] != null && !(this.bucketArray[index].getKey() == key)) {
+//            if (!this.bucketArray[index].isDeleted()) {
+//                collisionCounter++; //
+//            }
+//            exponent++;
+//            index = compressionFunction(hashcode, exponent);
+//        }
+//        return index;
+//    }
+
+
+//    private int searchViaQuadraticProbing(int key, int index, int exponent, int hashcode) {
+//        while (this.bucketArray[index] != null && !(this.bucketArray[index].getKey() == key)) {
+//            if (!this.bucketArray[index].isDeleted()) {
+//                exponent++;
+//                index = compressionFunction(hashcode, exponent);
+//            } else {
+//                // If deleted, check the next position in the probe sequence
+//                exponent++;
+//                index = compressionFunction(hashcode, exponent);
+//            }
+//        }
+//        return index;
+//    }
+
+//    public boolean remove(int studentID) {
+//        if(!verifyKey(studentID)){
+//            invalidKeys++;
+//            return false;
+//        }
+//        // Removing the student from the bucketArray
+//        Student searchProbe = new Student(studentID, "StudentSearcher");
+//        int hashcode = searchProbe.hashCode();
+//        int index = compressionFunction(hashcode, 0);
+//        int exponent = 0;
+//
+//        while (this.bucketArray[index] != null && !(this.bucketArray[index].getKey() == studentID)) {
+//            exponent++;
+//            index = compressionFunction(hashcode, exponent);
+//            if (index >= this.bucketArray.length) {
+//                System.out.println("Error: ID not found");
+//                return false; // End of table reached, ID not found
+//            }
+//        }
+//
+//        if (this.bucketArray[index] != null && this.bucketArray[index].getKey() == studentID) {
+//            this.bucketArray[index].delete(); // Mark as deleted
+//            this.keySize--;
+//        } else {
+//            System.out.println("Error: ID not found");
+//            return false; // ID not found in the bucketArray
+//        }
+//
+//        // Removing the key from insertionOrder
+//        for (int i = 0; i < orderSize; i++) {
+//            if (insertionOrder[i] == studentID) {
+//                // Shift elements to the left to fill the gap
+//                for (int j = i; j < orderSize - 1; j++) {
+//                    insertionOrder[j] = insertionOrder[j + 1];
+//                }
+//                orderSize--;
+//                break;
+//            }
+//        }
+//        return true;
+//    }
+
     public boolean remove(int studentID) {
+        if (!verifyKey(studentID)) {
+            invalidKeys++;
+            return false;
+        }
         // Removing the student from the bucketArray
         Student searchProbe = new Student(studentID, "StudentSearcher");
         int hashcode = searchProbe.hashCode();
@@ -192,8 +366,28 @@ public class myHashTable {
         return true;
     }
 
+    public String get(int key) {
+        if (!verifyKey(key)) {
+            invalidKeys++;
+            return null;
+        }
 
-    public int getKeySize(){
+        Student entry = new Student(key, "sentinel");
+        int exponent = 0;
+        int hashcode = entry.hashCode();
+        int assumedIndex = compressionFunction(hashcode, exponent);
+        int actualIndex = searchViaQuadraticProbing(key, assumedIndex, exponent, hashcode);
+
+
+        if (this.bucketArray[actualIndex].isDeleted()) { //if it was deleted, no other place it would be.
+            return null;
+        } else {
+            return this.bucketArray[actualIndex].getValue();
+        }
+    }
+
+
+    public int getKeySize() {
         return this.keySize;
     }
 
@@ -251,25 +445,29 @@ public class myHashTable {
 
     // Helper method to check if a key exists
     public boolean keyExists(int key) {
-        for (Student student : bucketArray) {
-            if (student != null && !student.isDeleted() && student.getKey() == key) {
-                return true;
-            }
+        if (!verifyKey(key)) {
+            invalidKeys++;
+            return false;
         }
-        return false;
+        Student entry = new Student(key, "sentinel");
+        int exponent = 0;
+        int hashcode = entry.hashCode();
+        int assumedIndex = compressionFunction(hashcode, exponent);
+        int actualIndex = searchViaQuadraticProbing(key, assumedIndex, exponent, hashcode);
+        return this.bucketArray[actualIndex] != null && !this.bucketArray[actualIndex].isDeleted();
     }
 
-    // Method to get all values
-    public String[] getValues() {
-        String[] values = new String[this.keySize];
-        int index = 0;
-        for (Student student : bucketArray) {
-            if (student != null && !student.isDeleted()) {
-                values[index++] = student.getValue();
-            }
-        }
-        return values;
-    }
+//    // Method to get all values
+//    public String[] getValues() {
+//        String[] values = new String[this.keySize];
+//        int index = 0;
+//        for (Student student : bucketArray) {
+//            if (student != null && !student.isDeleted()) {
+//                values[index++] = student.getValue();
+//            }
+//        }
+//        return values;
+//    }
 
     public int prevKey(int key) {
         for (int i = 0; i < orderSize; i++) {
@@ -324,8 +522,15 @@ public class myHashTable {
         return sb.toString();
     }
 
+    public int getUserSize() {
+        return userSize;
+    }
 
+    public int getDuplicateKeys() {
+        return duplicateKeys;
+    }
 
-
-
+    public int getInvalidKeys() {
+        return invalidKeys;
+    }
 }
